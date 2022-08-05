@@ -1,0 +1,19 @@
+<RCC>
+  <qresource prefix="images">
+    <file>pp_00001.jpg</file>
+    <file>pp_00000.png</file>
+    <file>pp_00002.jpg</file>
+    <file>pp_00003.jpg</file>
+    <file>pp_00004.jpg</file>
+    <file>pp_00005.jpg</file>
+    <file>pp_00006.jpg</file>
+    <file>pp_00007.jpg</file>
+    <file>pp_00008.jpg</file>
+    <file>pp_00009.jpg</file>
+    <file>pp_00010.jpg</file>
+    <file>pp_00011.jpg</file>
+  </qresource>
+  <qresource prefix="static">
+    <file>style.css</file>
+  </qresource>
+</RCC>

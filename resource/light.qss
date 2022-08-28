@@ -1,0 +1,29 @@
+#contact{
+    background-image: url(resource/person_light.png);
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+#group{
+    background-image: url(resource/person_light.png);
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+#phone{
+    background-image: url(resource/phone_light.png);
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+#mail{
+    background-image: url(resource/email_light.png);
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+#address{
+    background-image: url(resource/position_light.png);
+    background-repeat: no-repeat;
+    background-position: center;
+}

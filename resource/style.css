@@ -55,8 +55,9 @@ QLineEdit:disabled {
 }
 
 QTableView {
-	border: none;
+	border: 1px solid rgb(100, 100, 100);
 	background-color: #232323;
+	border-radius: 4px;
 }
 
 QTableView::item {
@@ -70,7 +71,7 @@ QHeaderView {
 }
 
 QHeaderView::section {
-	border: 1px solid rgb(100, 100, 100);
+	border: none;
 	background-color: #232323;
 	color: #fafafa;
 	border-radius: 4px;

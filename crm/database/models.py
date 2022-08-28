@@ -1,3 +1,5 @@
+import datetime
+
 from sqlalchemy import create_engine, Integer, Column, String, Boolean, ForeignKey, DateTime, Enum, Float
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
@@ -16,6 +18,7 @@ class Contact(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     firstname = Column(String)
     surname = Column(String)
+    birthday = Column(DateTime, default=datetime.datetime.now)
 
     mail = relationship('Mail', back_populates='contact')
     phone = relationship('Phone', back_populates='contact')
@@ -60,3 +63,8 @@ class Phone(Base):
 
 if __name__ == '__main__':
     Base.metadata.create_all(engine)
+    # session.add(Contact(firstname="Bertrand", surname="Dales"))
+    # session.commit()
+    contact = session.query(Contact).where(Contact.id == 1)
+    print(contact.firstname)
+    print(datetime.datetime.strptime(str(contact.birthday), "%Y-%m-%d"))

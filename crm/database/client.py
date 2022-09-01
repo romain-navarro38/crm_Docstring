@@ -1,6 +1,6 @@
 import sqlite3
 
-from crm.api.utils import DATA_FILE
+from crm.api.utils import DATA_FILE, DEFAULT_TAGS
 
 QUERY_PHONE = """
     SELECT phone.id, tag, number FROM phone
@@ -19,6 +19,95 @@ QUERY_ADDRESS = """
     INNER JOIN tag ON address.tag_id = tag.id 
     WHERE contact_id={id}
 """
+
+CONTACT = """
+    CREATE TABLE IF NOT EXISTS contact (
+        id INTEGER NOT NULL,
+        firstname VARCHAR,
+        lastname VARCHAR,
+        profile_picture VARCHAR,
+        birthday DATE,
+        company VARCHAR,
+        job VARCHAR,
+        PRIMARY KEY(id));
+"""
+
+TAG = """
+    CREATE TABLE IF NOT EXISTS tag (
+        id INTEGER NOT NULL,
+        tag VARCHAR,
+        category VARCHAR,
+        PRIMARY KEY(id));
+"""
+
+PHONE = """
+    CREATE TABLE phone (
+        id INTEGER NOT NULL,
+        number VARCHAR,
+        contact_id INTEGER NOT NULL,
+        tag_id INTEGER NOT NULL,
+        PRIMARY KEY(id),
+        FOREIGN KEY(contact_id) REFERENCES contact(id),
+        FOREIGN KEY(tag_id) REFERENCES tag(id));
+"""
+
+MAIL = """
+    CREATE TABLE mail (
+        id INTEGER NOT NULL,
+        mail VARCHAR,
+        contact_id INTEGER NOT NULL,
+        tag_id INTEGER NOT NULL,
+        PRIMARY KEY(id),
+        FOREIGN KEY(contact_id) REFERENCES contact(id),
+        FOREIGN KEY(tag_id) REFERENCES tag(id));
+"""
+
+ADDRESS = """
+    CREATE TABLE address (
+        id INTEGER NOT NULL,
+        address VARCHAR,
+        contact_id INTEGER NOT NULL,
+        tag_id INTEGER NOT NULL,
+        PRIMARY KEY(id),
+        FOREIGN KEY(contact_id) REFERENCES contact(id),
+        FOREIGN KEY(tag_id) REFERENCES tag(id));
+"""
+
+GROUP = """
+    CREATE TABLE group_ (
+        id INTEGER NOT NULL,
+        contact_id INTEGER NOT NULL,
+        tag_id INTEGER NOT NULL,
+        PRIMARY KEY(id),
+        FOREIGN KEY(contact_id) REFERENCES contact(id),
+        FOREIGN KEY(tag_id) REFERENCES tag(id));
+"""
+
+def init_database_structure():
+    conn = sqlite3.connect(DATA_FILE)
+    c = conn.cursor()
+    c.execute(CONTACT)
+    c.execute(TAG)
+    c.execute(PHONE)
+    c.execute(MAIL)
+    c.execute(ADDRESS)
+    c.execute(GROUP)
+    conn.commit()
+    conn.close()
+
+
+def init_database_tag():
+    for tag in DEFAULT_TAGS:
+        add_tag(**tag)
+
+
+def update_tag(**kwargs):
+    conn = sqlite3.connect(DATA_FILE)
+    c = conn.cursor()
+    c.execute("""UPDATE tag SET tag=:tag 
+                 WHERE id=:id_""", kwargs)
+    conn.commit()
+    conn.close()
 
 
 def update_contact(**kwargs):
@@ -57,6 +146,15 @@ def update_address(address: str, id_tag: int, id_address: int):
     d = {'address': address, 'id_tag': id_tag, 'id_address': id_address}
     c = conn.cursor()
     c.execute("UPDATE address SET address=:address, tag_id=:id_tag WHERE address.id=:id_address", d)
+    conn.commit()
+    conn.close()
+
+
+def update_profil_picture(id_contact: int, filename: str):
+    conn = sqlite3.connect(DATA_FILE)
+    d = {'id': id_contact, 'pp': filename}
+    c = conn.cursor()
+    c.execute("UPDATE contact SET profile_picture=:pp WHERE id=:id", d)
     conn.commit()
     conn.close()
 
@@ -243,4 +341,5 @@ def del_tag_by_id(id_tag: int, category: str) -> bool:
 
 
 if __name__ == '__main__':
-    print(del_tag_by_id(10, "group"))
+    init_database_structure()
+    init_database_tag()

@@ -4,11 +4,9 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-sqlalchemy = "==1.4.39"
-phonenumbers = "==8.12.51"
 pyside6 = "*"
-python-dateutil = "*"
 pillow = "*"
+unidecode = "*"
 
 [dev-packages]
 

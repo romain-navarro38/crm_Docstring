@@ -1,11 +1,10 @@
 import sys
 from datetime import datetime
 
-from PySide6.QtCore import QDate, Signal
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtCore import Signal
 from PySide6.QtSql import QSqlDatabase, QSqlQueryModel
 from PySide6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QDateEdit, \
-    QPushButton, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QListWidget, QListWidgetItem
+    QPushButton, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QListWidget, QMessageBox
 
 from crm.api.utils import DATA_FILE
 from crm.window.list_item import CustomListWidgetItem
@@ -67,7 +66,10 @@ class DetailsContact(QWidget):
     def modify_widgets(self):
         self.mapper.addMapping(self.le_firstname, 1)
         self.mapper.addMapping(self.le_lastname, 2)
-        self.mapper.addMapping(self.date_birthday, 3)
+        if self.mode_action == "modify":
+            self.mapper.addMapping(self.date_birthday, 3)
+        else:
+            self.date_birthday.setDate(datetime(year=1899, month=12, day=31))
         self.mapper.addMapping(self.le_company, 4)
         self.mapper.addMapping(self.le_job, 5)
         self.mapper.toFirst()
@@ -109,17 +111,20 @@ class DetailsContact(QWidget):
         self.lw_group.itemClicked.connect(self.change_etat_group)
 
     def save_changes(self):
+        if not self.check_data():
+            return
+
         date = datetime.strptime(self.date_birthday.text(), "%d/%m/%Y")
         if self.mode_action == "modify":
             update_contact(id_contact=self.id_contact,
-                           firstname=self.le_firstname.text(),
-                           lastname=self.le_lastname.text(),
+                           firstname=self.le_firstname.text().capitalize(),
+                           lastname=self.le_lastname.text().upper(),
                            birthday=date.strftime("%Y-%m-%d"),
                            company=self.le_company.text(),
                            job=self.le_job.text())
         else:
-            self.id_contact = add_contact(firstname=self.le_firstname.text(),
-                                          lastname=self.le_lastname.text(),
+            self.id_contact = add_contact(firstname=self.le_firstname.text().capitalize(),
+                                          lastname=self.le_lastname.text().upper(),
                                           birthday=date.strftime("%Y-%m-%d"),
                                           company=self.le_company.text(),
                                           job=self.le_job.text())
@@ -131,6 +136,16 @@ class DetailsContact(QWidget):
                 del_group_of_contact(self.id_contact, item.id)
         self.update_main_window.emit()
         self.close()
+
+    def check_data(self):
+        if not self.le_firstname.text() and not self.le_lastname.text():
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Incomplet")
+            msg.setText("Veuillez renseigner un nom et/ou un prénom.")
+            msg.setIcon(QMessageBox.Information)
+            msg.exec()
+            return False
+        return True
 
     @staticmethod
     def change_etat_group(item):

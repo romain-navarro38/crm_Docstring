@@ -3,14 +3,27 @@ import sys
 from PySide6.QtCore import Signal
 from PySide6.QtSql import QSqlDatabase, QSqlQueryModel
 from PySide6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QPushButton, \
-    QVBoxLayout, QHBoxLayout, QComboBox
+    QVBoxLayout, QHBoxLayout, QComboBox, QSpacerItem, QSizePolicy, QMessageBox
 
-from crm.api.utils import DATA_FILE
+from crm.api.utils import DATA_FILE, check_phone_number_format
 from crm.database.client import update_number_phone, get_tag_to_category_phone, add_phone
 
 db = QSqlDatabase("QSQLITE")
 db.setDatabaseName(str(DATA_FILE))
 db.open()
+
+
+class MessageConfirm(QMessageBox):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Confirmation")
+        self.setText("Ce format n'est pas valide.\nVoulez-vous quand même l'enregistrer ?")
+        self.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        btn_yes = self.button(QMessageBox.Yes)
+        btn_yes.setText('Oui')
+        btn_no = self.button(QMessageBox.No)
+        btn_no.setText('Non')
+        self.setIcon(QMessageBox.Icon.Question)
 
 
 # noinspection PyAttributeOutsideInit
@@ -75,8 +88,10 @@ class DetailsPhone(QWidget):
         self.values_layout.addRow(QLabel("Numéro"), self.le_number)
         self.values_layout.addRow(QLabel("Tag"), self.cbx_tag)
 
+        self.btn_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
         self.btn_layout.addWidget(self.btn_validate)
         self.btn_layout.addWidget(self.btn_cancel)
+        self.btn_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
         self.main_layout.addLayout(self.values_layout)
         self.main_layout.addLayout(self.btn_layout)
@@ -86,6 +101,9 @@ class DetailsPhone(QWidget):
         self.btn_cancel.clicked.connect(self.close)
 
     def save_changes(self):
+        if not self.validate_phone():
+            return False
+
         id_tag = self.idx[self.tags.index(self.cbx_tag.currentText())]
         if self.mode_action == "modify":
             update_number_phone(self.le_number.text(), id_tag, self.id_phone)
@@ -93,6 +111,19 @@ class DetailsPhone(QWidget):
             add_phone(number=self.le_number.text(), contact_id=self.id_contact, tag_id=id_tag)
         self.update_main_window.emit()
         self.close()
+
+    def validate_phone(self):
+        if not self.le_number.text():
+            return False
+
+        if not check_phone_number_format(self.le_number.text()):
+            msg = MessageConfirm()
+            button = msg.exec()
+            button = QMessageBox.StandardButton(button)
+            if button == QMessageBox.StandardButton.No:
+                return False
+
+        return True
 
 
 if __name__ == '__main__':

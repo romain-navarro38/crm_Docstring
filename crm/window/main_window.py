@@ -1,14 +1,16 @@
+import shutil
 import sys
 import sqlite3
 from datetime import datetime
 from functools import partial
+from pathlib import Path
 
 from PySide6.QtCore import QSize, QModelIndex, Qt, Signal, QSortFilterProxyModel
 from PySide6.QtGui import QPixmap, QPainter, QPainterPath, QPalette, QAction, QIcon, QKeySequence
 from PySide6.QtSql import QSqlDatabase, QSqlQueryModel
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QTableView, QGridLayout, QHeaderView, QLineEdit, \
     QLabel, QAbstractItemView, QVBoxLayout, QFormLayout, QHBoxLayout, QMenuBar, QMenu, QPushButton, QMessageBox, \
-    QSpacerItem, QSizePolicy
+    QSpacerItem, QSizePolicy, QFileDialog
 from PIL import Image
 
 from crm.api.utils import DATA_FILE, RESOURCE_DIR, get_dark_style_sheet, update_theme_setting, get_light_style_sheet
@@ -19,7 +21,7 @@ from crm.window.address_details import DetailsAddress
 from crm.window.tag import Tag
 from crm.window.about import About
 from crm.database.client import QUERY_PHONE, QUERY_MAIL, QUERY_ADDRESS, del_contact_by_id, del_address_by_id, \
-    del_mail_by_id, del_phone_by_id
+    del_mail_by_id, del_phone_by_id, update_profil_picture
 
 db = QSqlDatabase("QSQLITE")
 db.setDatabaseName(str(DATA_FILE))
@@ -116,7 +118,7 @@ class TableViewCustom(QTableView):
         self.horizontalHeader().setSectionHidden(0, True)
 
 
-class CustomMessageBox(QMessageBox):
+class MessageDelete(QMessageBox):
     def __init__(self, type_data: str, *args: str):
         super().__init__()
         self.setWindowTitle("Confirmation")
@@ -141,7 +143,7 @@ class CustomMessageBox(QMessageBox):
 
 
 # noinspection PyAttributeOutsideInit
-class MainWindow(QMainWindow):
+class Crm(QMainWindow):
     def __init__(self, parent: QApplication):
         super().__init__()
 
@@ -440,10 +442,26 @@ class MainWindow(QMainWindow):
         self.btn_modify_address.clicked.connect(partial(self.distribution_editing_action, "address"))
         self.btn_add_address.clicked.connect(partial(self.open_details_address, "adding"))
         self.btn_del_address.clicked.connect(partial(self.distribution_deleting_action, "address"))
-        self.la_profile_picture.doubleClicked.connect(self.essai2)
+        self.la_profile_picture.doubleClicked.connect(self.get_filename)
 
-    def essai2(self):
-        print("coucou")
+    def get_filename(self):
+        row = self.tv_contact.currentIndex().row()
+        if row == -1:
+            return
+        filters = "Image (*.png;*.jpg;*.jpeg)"
+        selected_file, _ = QFileDialog.getOpenFileName(self, dir=str(Path.home()), filter=filters)
+
+        if not selected_file:
+            return
+
+        path = Path(selected_file)
+        id_: int = self.tv_contact.currentIndex().sibling(row, 0).data()
+        new_filename = RESOURCE_DIR / f"pp_{str(id_).zfill(5)}{path.suffix}"
+        if new_filename.exists():
+            new_filename.unlink()
+        shutil.copy(path, new_filename)
+        update_profil_picture(id_contact=id_, filename=new_filename.name)
+        self.update_other_display(self.tv_contact.currentIndex())
 
     def open_details_contact(self, mode_action: str, selected: QModelIndex = None):
         if mode_action == "modify":
@@ -520,13 +538,13 @@ class MainWindow(QMainWindow):
         self.details_address.show()
 
     @staticmethod
-    def manage_tag(self):
+    def manage_tag():
         win = Tag()
         win.setWindowModality(Qt.ApplicationModal)
         win.show()
 
     @staticmethod
-    def open_about(self):
+    def open_about():
         win = About()
         win.setWindowModality(Qt.ApplicationModal)
         win.show()
@@ -653,8 +671,8 @@ class MainWindow(QMainWindow):
         firstname = selected.sibling(selected.row(), 1).data()
         lastname = selected.sibling(selected.row(), 2).data()
 
-        self.msg = CustomMessageBox("contact", firstname, lastname)
-        button = self.msg.exec()
+        msg = MessageDelete("contact", firstname, lastname)
+        button = msg.exec()
         button = QMessageBox.StandardButton(button)
         if button != QMessageBox.StandardButton.Yes:
             return
@@ -669,8 +687,8 @@ class MainWindow(QMainWindow):
     def deleting_phone(self, selected: QModelIndex):
         number = selected.sibling(selected.row(), 2).data()
 
-        self.msg = CustomMessageBox("phone", number)
-        button = self.msg.exec()
+        msg = MessageDelete("phone", number)
+        button = msg.exec()
         button = QMessageBox.StandardButton(button)
         if button != QMessageBox.StandardButton.Yes:
             return
@@ -682,8 +700,8 @@ class MainWindow(QMainWindow):
     def deleting_mail(self, selected: QModelIndex):
         mail = selected.sibling(selected.row(), 2).data()
 
-        self.msg = CustomMessageBox("mail", mail)
-        button = self.msg.exec()
+        msg = MessageDelete("mail", mail)
+        button = msg.exec()
         button = QMessageBox.StandardButton(button)
         if button != QMessageBox.StandardButton.Yes:
             return
@@ -695,8 +713,8 @@ class MainWindow(QMainWindow):
     def deleting_address(self, selected: QModelIndex):
         address = selected.sibling(selected.row(), 2).data()
 
-        self.msg = CustomMessageBox("address", address)
-        button = self.msg.exec()
+        msg = MessageDelete("address", address)
+        button = msg.exec()
         button = QMessageBox.StandardButton(button)
         if button != QMessageBox.StandardButton.Yes:
             return
@@ -709,6 +727,6 @@ class MainWindow(QMainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyleSheet(get_dark_style_sheet())
-    window = MainWindow(app)
+    window = Crm(app)
     window.show()
     app.exec()

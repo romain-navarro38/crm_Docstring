@@ -1,19 +1,97 @@
 import sys
 from functools import partial
 
+from unidecode import unidecode
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QPixmap, QFont
 from PySide6.QtWidgets import QApplication, QWidget, QLabel, QListWidget, QPushButton, QGridLayout, QHBoxLayout, \
-    QSpacerItem, QSizePolicy, QInputDialog, QLineEdit, QMessageBox
+    QSpacerItem, QSizePolicy, QMessageBox, QLineEdit, QVBoxLayout
 
 from crm.api.utils import RESOURCE_DIR
 from crm.database.client import get_tag_to_category_group, get_tag_to_category_phone, get_tag_to_category_mail, \
-    get_tag_to_category_address, del_tag_by_id, add_tag
+    get_tag_to_category_address, del_tag_by_id, add_tag, update_tag
 from crm.window.list_item import CustomListWidgetItem
 
 
-def check_tag(tag: str, widget: QListWidget):
-    return bool(tag and tag not in [widget.item(i).text().lower() for i in range(widget.count())])
+def check_tag(tag: str, list_widget: QListWidget):
+    tags = [unidecode(list_widget.item(i).text()).lower() for i in range(list_widget.count())]
+    return bool(tag and unidecode(tag).lower() not in tags)
+
+
+# noinspection PyAttributeOutsideInit
+class InputTag(QWidget):
+    def __init__(self,
+                 parent: QWidget,
+                 mode_action: str,
+                 category: str,
+                 old_tag: CustomListWidgetItem = None):
+        super().__init__()
+
+        self.parent = parent
+        self.mode_action = mode_action
+        self.category = category
+        self.old_tag = old_tag
+        if mode_action == "modify":
+            self.setWindowTitle("Modifier un tag")
+        else:
+            self.setWindowTitle("Ajouter un tag")
+        self.resize(300, 75)
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.create_widgets()
+        self.modify_widgets()
+        self.create_layouts()
+        self.add_widgets_to_layouts()
+        self.setup_connections()
+
+    def create_widgets(self):
+        self.la_prompt = QLabel("Nouveau tag :")
+        self.le_tag = QLineEdit()
+        self.btn_validate = QPushButton("Valider")
+        self.btn_cancel = QPushButton("Annuler")
+
+    def modify_widgets(self):
+        if self.mode_action == "modify":
+            self.le_tag.setText(self.old_tag.text())
+
+    def create_layouts(self):
+        self.main_layout = QVBoxLayout(self)
+        self.tag_layout = QHBoxLayout()
+        self.btn_layout = QHBoxLayout()
+
+    def add_widgets_to_layouts(self):
+        self.tag_layout.addWidget(self.la_prompt)
+        self.tag_layout.addWidget(self.le_tag)
+        self.btn_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
+        self.btn_layout.addWidget(self.btn_validate)
+        self.btn_layout.addWidget(self.btn_cancel)
+        self.main_layout.addLayout(self.tag_layout)
+        self.main_layout.addLayout(self.btn_layout)
+
+    def setup_connections(self):
+        self.btn_validate.clicked.connect(self.check_input_user)
+        self.btn_cancel.clicked.connect(self.close)
+
+    def check_input_user(self):
+        list_widget: QListWidget = self.parent.findChild(QListWidget, self.category)
+        if not check_tag(self.le_tag.text(), list_widget):
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Erreur")
+            msg.setText("Tag invalide")
+            msg.setIcon(QMessageBox.Critical)
+            msg.exec()
+            return
+
+        new_tag = self.le_tag.text().capitalize()
+        if self.mode_action == "modify":
+            self.old_tag.setText(new_tag)
+            update_tag(tag=new_tag, id_=self.old_tag.id)
+        else:
+            id_ = add_tag(tag=new_tag, category=self.category)
+            lw_item = CustomListWidgetItem(item=new_tag, idx=id_)
+            list_widget.addItem(lw_item)
+        self.close()
 
 
 # noinspection PyAttributeOutsideInit
@@ -149,10 +227,10 @@ class Tag(QWidget):
         self.close_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
     def setup_connections(self):
-        self.lw_group.doubleClicked.connect(self.modify_tag)
-        self.lw_phone.doubleClicked.connect(self.modify_tag)
-        self.lw_mail.doubleClicked.connect(self.modify_tag)
-        self.lw_address.doubleClicked.connect(self.modify_tag)
+        self.lw_group.itemDoubleClicked.connect(partial(self.modify_tag, "group"))
+        self.lw_phone.itemDoubleClicked.connect(partial(self.modify_tag, "phone"))
+        self.lw_mail.itemDoubleClicked.connect(partial(self.modify_tag, "mail"))
+        self.lw_address.itemDoubleClicked.connect(partial(self.modify_tag, "address"))
         self.btn_add_group.clicked.connect(partial(self.add_tag, "group"))
         self.btn_add_phone.clicked.connect(partial(self.add_tag, "phone"))
         self.btn_add_mail.clicked.connect(partial(self.add_tag, "mail"))
@@ -163,21 +241,15 @@ class Tag(QWidget):
         self.btn_del_address.clicked.connect(partial(self.del_tag, "address"))
         self.btn_close.clicked.connect(self.close)
 
-    def modify_tag(self, selected):
-        print(selected)
+    def modify_tag(self, category: str, item: CustomListWidgetItem):
+        self.new_tag = InputTag(self, "modify", category, item)
+        self.new_tag.setWindowModality(Qt.ApplicationModal)
+        self.new_tag.show()
 
     def add_tag(self, category: str):
-        widget: QListWidget = self.findChild(QListWidget, category)
-        user_tag = ""
-        ok = True
-        while ok and not check_tag(user_tag, widget):
-            user_tag, ok = QInputDialog.getText(self, "Ajouter un tag", "Nouveau tag :")
-        if not ok:
-            return
-
-        id_ = add_tag(tag=user_tag, category=category.capitalize())
-        lw_item = CustomListWidgetItem(item=user_tag, idx=id_)
-        widget.addItem(lw_item)
+        self.new_tag = InputTag(self, "adding", category)
+        self.new_tag.setWindowModality(Qt.ApplicationModal)
+        self.new_tag.show()
 
     def del_tag(self, category: str):
         widget: QListWidget = self.findChild(QListWidget, category)

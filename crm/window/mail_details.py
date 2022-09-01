@@ -3,9 +3,9 @@ import sys
 from PySide6.QtCore import Signal
 from PySide6.QtSql import QSqlDatabase, QSqlQueryModel
 from PySide6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QPushButton, \
-    QVBoxLayout, QHBoxLayout, QComboBox, QSpacerItem, QSizePolicy
+    QVBoxLayout, QHBoxLayout, QComboBox, QSpacerItem, QSizePolicy, QMessageBox
 
-from crm.api.utils import DATA_FILE
+from crm.api.utils import DATA_FILE, check_mail_format
 from crm.database.client import update_mail, get_tag_to_category_mail, add_mail
 
 db = QSqlDatabase("QSQLITE")
@@ -75,19 +75,22 @@ class DetailsMail(QWidget):
         self.values_layout.addRow(QLabel("Mail"), self.le_mail)
         self.values_layout.addRow(QLabel("Tag"), self.cbx_tag)
 
+        self.btn_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
         self.btn_layout.addWidget(self.btn_validate)
         self.btn_layout.addWidget(self.btn_cancel)
-
         self.btn_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
+
         self.main_layout.addLayout(self.values_layout)
         self.main_layout.addLayout(self.btn_layout)
-        self.btn_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
     def setup_connections(self):
         self.btn_validate.clicked.connect(self.save_changes)
         self.btn_cancel.clicked.connect(self.close)
 
     def save_changes(self):
+        if not self.validate_mail():
+            return
+
         id_tag = self.idx[self.tags.index(self.cbx_tag.currentText())]
         if self.mode_action == "modify":
             update_mail(self.le_mail.text(), id_tag, self.id_mail)
@@ -95,6 +98,19 @@ class DetailsMail(QWidget):
             add_mail(mail=self.le_mail.text(), contact_id=self.id_contact, tag_id=id_tag)
         self.update_main_window.emit()
         self.close()
+
+    def validate_mail(self):
+        if not self.le_mail.text():
+            return False
+
+        if not check_mail_format(self.le_mail.text()):
+            msg = QMessageBox(self)
+            msg.setWindowTitle("Invalide")
+            msg.setText("cette adresse mail n'a pas le bon format.")
+            msg.setIcon(QMessageBox.Icon.Critical)
+            msg.exec()
+            return False
+        return True
 
 
 if __name__ == '__main__':

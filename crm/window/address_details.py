@@ -3,7 +3,7 @@ import sys
 from PySide6.QtCore import Signal
 from PySide6.QtSql import QSqlDatabase, QSqlQueryModel
 from PySide6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QPushButton, \
-    QVBoxLayout, QHBoxLayout, QComboBox
+    QVBoxLayout, QHBoxLayout, QComboBox, QSpacerItem, QSizePolicy
 
 from crm.api.utils import DATA_FILE
 from crm.database.client import update_address, add_address, get_tag_to_category_address
@@ -75,8 +75,11 @@ class DetailsAddress(QWidget):
         self.values_layout.addRow(QLabel("Adresse"), self.le_address)
         self.values_layout.addRow(QLabel("Tag"), self.cbx_tag)
 
+
+        self.btn_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
         self.btn_layout.addWidget(self.btn_validate)
         self.btn_layout.addWidget(self.btn_cancel)
+        self.btn_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
         self.main_layout.addLayout(self.values_layout)
         self.main_layout.addLayout(self.btn_layout)

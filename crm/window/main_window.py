@@ -23,9 +23,12 @@ from crm.window.about import About
 from crm.database.client import QUERY_PHONE, QUERY_MAIL, QUERY_ADDRESS, del_contact_by_id, del_address_by_id, \
     del_mail_by_id, del_phone_by_id, update_profil_picture
 
-db = QSqlDatabase("QSQLITE")
-db.setDatabaseName(str(DATA_FILE))
-db.open()
+
+column_titles = {
+    "phone": "Téléphone",
+    "mail": "Mail",
+    "address": "Adresse"
+}
 
 
 def get_age_from_birthday(birthday: datetime) -> int:
@@ -114,6 +117,14 @@ class TableViewCustom(QTableView):
         self.hide_first_column()
         self.setObjectName(name)
 
+        match name:
+            case "contact":
+                self.model().setHeaderData(1, Qt.Orientation.Horizontal, "Prénom")
+                self.model().setHeaderData(2, Qt.Orientation.Horizontal, "Nom")
+            case _:
+                self.model().setHeaderData(1, Qt.Orientation.Horizontal, "Tag")
+                self.model().setHeaderData(2, Qt.Orientation.Horizontal, column_titles[name])
+
     def hide_first_column(self):
         self.horizontalHeader().setSectionHidden(0, True)
 
@@ -151,24 +162,30 @@ class Crm(QMainWindow):
         self.theme = None
         self.background_color = None
         self.setMinimumSize(QSize(1024, 512))
+        self.connect_db()
         self.setup_model()
         self.setup_menu()
         self.setup_ui()
         self.setWindowTitle("CRM Docstring by Rocket")
 
+    def connect_db(self):
+        self.db = QSqlDatabase("QSQLITE")
+        self.db.setDatabaseName(str(DATA_FILE))
+        self.db.open()
+
     def setup_model(self):
         self.model_contact = QSqlQueryModel()
         self.query_contact = 'SELECT id, firstname, lastname FROM contact'
-        self.model_contact.setQuery(self.query_contact, db=db)
+        self.model_contact.setQuery(self.query_contact, db=self.db)
         self.model_phone = QSqlQueryModel()
         self.query_phone = QUERY_PHONE.format(id=0)
-        self.model_phone.setQuery(self.query_phone, db=db)
+        self.model_phone.setQuery(self.query_phone, db=self.db)
         self.model_mail = QSqlQueryModel()
         self.query_mail = QUERY_MAIL.format(id=0)
-        self.model_mail.setQuery(self.query_mail, db=db)
+        self.model_mail.setQuery(self.query_mail, db=self.db)
         self.model_address = QSqlQueryModel()
         self.query_address = QUERY_ADDRESS.format(id=0)
-        self.model_address.setQuery(self.query_address, db=db)
+        self.model_address.setQuery(self.query_address, db=self.db)
 
     def setup_menu(self):
         self.menu = QMenuBar(self)
@@ -550,22 +567,22 @@ class Crm(QMainWindow):
         win.show()
 
     def refresh_tv_contact(self, selected_row: QModelIndex = None):
-        self.model_contact.setQuery(self.query_contact, db=db)
+        self.model_contact.setQuery(self.query_contact, db=self.db)
         if selected_row:
             self.tv_contact.setCurrentIndex(selected_row)
 
     def refresh_tv_phone(self, selected_row: QModelIndex = None):
-        self.model_phone.setQuery(self.query_phone, db=db)
+        self.model_phone.setQuery(self.query_phone, db=self.db)
         if selected_row:
             self.tv_phone.setCurrentIndex(selected_row)
 
     def refresh_tv_mail(self, selected_row: QModelIndex = None):
-        self.model_mail.setQuery(self.query_mail, db=db)
+        self.model_mail.setQuery(self.query_mail, db=self.db)
         if selected_row:
             self.tv_mail.setCurrentIndex(selected_row)
 
     def refresh_tv_address(self, selected_row: QModelIndex = None):
-        self.model_address.setQuery(self.query_address, db=db)
+        self.model_address.setQuery(self.query_address, db=self.db)
         if selected_row:
             self.tv_address.setCurrentIndex(selected_row)
 
@@ -586,7 +603,7 @@ class Crm(QMainWindow):
         else:
             self.query_contact = 'SELECT id, firstname, lastname FROM contact'
 
-        self.model_contact.setQuery(self.query_contact, db=db)
+        self.model_contact.setQuery(self.query_contact, db=self.db)
         self.clean_other_display()
         self.update_other_display(self.tv_contact.currentIndex())
 
@@ -637,15 +654,15 @@ class Crm(QMainWindow):
         self.la_group_value.setText(get_contact_group(self.id_contact))
 
         self.query_phone = QUERY_PHONE.format(id=self.id_contact)
-        self.model_phone.setQuery(self.query_phone, db=db)
+        self.model_phone.setQuery(self.query_phone, db=self.db)
         self.tv_phone.hide_first_column()
 
         self.query_mail = QUERY_MAIL.format(id=self.id_contact)
-        self.model_mail.setQuery(self.query_mail, db=db)
+        self.model_mail.setQuery(self.query_mail, db=self.db)
         self.tv_mail.hide_first_column()
 
         self.query_address = QUERY_ADDRESS.format(id=self.id_contact)
-        self.model_address.setQuery(self.query_address, db=db)
+        self.model_address.setQuery(self.query_address, db=self.db)
         self.tv_address.hide_first_column()
 
     def change_theme(self, theme: str):

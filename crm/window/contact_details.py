@@ -11,10 +11,6 @@ from crm.window.list_item import CustomListWidgetItem
 from crm.database.client import get_tag_to_category_group, get_tag_to_category_group_by_contact, \
     add_tag_group_at_contact, del_group_of_contact, update_contact, add_contact
 
-db = QSqlDatabase("QSQLITE")
-db.setDatabaseName(str(DATA_FILE))
-db.open()
-
 
 # noinspection PyAttributeOutsideInit
 class DetailsContact(QWidget):
@@ -27,12 +23,18 @@ class DetailsContact(QWidget):
 
         self.id_contact = id_contact
         self.mode_action = mode_action
+        self.connect_db()
         self.setup_model()
         self.setup_ui()
         if mode_action == "modify":
             self.setWindowTitle("Editer un contact")
         else:
             self.setWindowTitle("Ajouter un contact")
+
+    def connect_db(self):
+        self.db = QSqlDatabase("QSQLITE")
+        self.db.setDatabaseName(str(DATA_FILE))
+        self.db.open()
 
     def setup_model(self):
         self.model = QSqlQueryModel()
@@ -44,7 +46,7 @@ class DetailsContact(QWidget):
             FROM contact 
             WHERE id={self.id_contact}
         """
-        self.model.setQuery(query, db=db)
+        self.model.setQuery(query, db=self.db)
 
     def setup_ui(self):
         self.create_widgets()

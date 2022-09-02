@@ -20,67 +20,72 @@ QUERY_ADDRESS = """
     WHERE contact_id={id}
 """
 
-CONTACT = """
-    CREATE TABLE IF NOT EXISTS contact (
-        id INTEGER NOT NULL,
-        firstname VARCHAR,
-        lastname VARCHAR,
-        profile_picture VARCHAR,
-        birthday DATE,
-        company VARCHAR,
-        job VARCHAR,
-        PRIMARY KEY(id));
+CONTACT = """ CREATE TABLE IF NOT EXISTS contact (
+                    id INTEGER PRIMARY KEY,
+                    firstname TEXT,
+                    lastname TEXT,
+                    profile_picture TEXT,
+                    birthday TEXT,
+                    company TEXT,
+                    job TEXT
+              );
 """
+sql = """ CREATE TABLE IF NOT EXISTS projects (
+                                        id integer PRIMARY KEY,
+                                        name text NOT NULL,
+                                        begin_date text,
+                                        end_date text
+                                    ); """
 
 TAG = """
     CREATE TABLE IF NOT EXISTS tag (
-        id INTEGER NOT NULL,
-        tag VARCHAR,
-        category VARCHAR,
-        PRIMARY KEY(id));
+        id integer PRIMARY KEY,
+        tag text,
+        category text
+    );
 """
 
 PHONE = """
-    CREATE TABLE phone (
-        id INTEGER NOT NULL,
-        number VARCHAR,
-        contact_id INTEGER NOT NULL,
-        tag_id INTEGER NOT NULL,
-        PRIMARY KEY(id),
-        FOREIGN KEY(contact_id) REFERENCES contact(id),
-        FOREIGN KEY(tag_id) REFERENCES tag(id));
+    CREATE TABLE IF NOT EXISTS phone (
+        id integer PRIMARY KEY,
+        number text,
+        contact_id integer NOT NULL,
+        tag_id integer NOT NULL,
+        FOREIGN KEY (contact_id) REFERENCES contact (id),
+        FOREIGN KEY (tag_id) REFERENCES tag (id)
+    );
 """
 
 MAIL = """
-    CREATE TABLE mail (
-        id INTEGER NOT NULL,
-        mail VARCHAR,
-        contact_id INTEGER NOT NULL,
-        tag_id INTEGER NOT NULL,
-        PRIMARY KEY(id),
-        FOREIGN KEY(contact_id) REFERENCES contact(id),
-        FOREIGN KEY(tag_id) REFERENCES tag(id));
+    CREATE TABLE IF NOT EXISTS mail (
+        id integer PRIMARY KEY,
+        mail text,
+        contact_id integer NOT NULL,
+        tag_id integer NOT NULL,
+        FOREIGN KEY (contact_id) REFERENCES contact (id),
+        FOREIGN KEY (tag_id) REFERENCES tag (id)
+    );
 """
 
 ADDRESS = """
-    CREATE TABLE address (
-        id INTEGER NOT NULL,
-        address VARCHAR,
-        contact_id INTEGER NOT NULL,
-        tag_id INTEGER NOT NULL,
-        PRIMARY KEY(id),
-        FOREIGN KEY(contact_id) REFERENCES contact(id),
-        FOREIGN KEY(tag_id) REFERENCES tag(id));
+    CREATE TABLE IF NOT EXISTS address (
+        id integer PRIMARY KEY,
+        address text,
+        contact_id integer NOT NULL,
+        tag_id integer NOT NULL,
+        FOREIGN KEY (contact_id) REFERENCES contact (id),
+        FOREIGN KEY (tag_id) REFERENCES tag (id)
+    );
 """
 
 GROUP = """
-    CREATE TABLE group_ (
-        id INTEGER NOT NULL,
-        contact_id INTEGER NOT NULL,
-        tag_id INTEGER NOT NULL,
-        PRIMARY KEY(id),
-        FOREIGN KEY(contact_id) REFERENCES contact(id),
-        FOREIGN KEY(tag_id) REFERENCES tag(id));
+    CREATE TABLE IF NOT EXISTS group_ (
+        id integer PRIMARY KEY,
+        contact_id integer NOT NULL,
+        tag_id integer NOT NULL,
+        FOREIGN KEY (contact_id) REFERENCES contact (id),
+        FOREIGN KEY (tag_id) REFERENCES tag (id)
+    );
 """
 
 def init_database_structure():
@@ -342,4 +347,4 @@ def del_tag_by_id(id_tag: int, category: str) -> bool:
 
 if __name__ == '__main__':
     init_database_structure()
-    init_database_tag()
+    # init_database_tag()

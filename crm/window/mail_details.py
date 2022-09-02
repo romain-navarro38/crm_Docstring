@@ -8,10 +8,6 @@ from PySide6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLa
 from crm.api.utils import DATA_FILE, check_mail_format
 from crm.database.client import update_mail, get_tag_to_category_mail, add_mail
 
-db = QSqlDatabase("QSQLITE")
-db.setDatabaseName(str(DATA_FILE))
-db.open()
-
 
 # noinspection PyAttributeOutsideInit
 class DetailsMail(QWidget):
@@ -26,6 +22,7 @@ class DetailsMail(QWidget):
         self.id_mail = id_mail
         self.id_contact = id_contact
         self.mode_action = mode_action
+        self.connect_db()
         self.setup_model()
         self.setup_ui()
         self.setMinimumWidth(350)
@@ -33,6 +30,11 @@ class DetailsMail(QWidget):
             self.setWindowTitle("Modifier une adresse mail")
         else:
             self.setWindowTitle("Ajouter une adresse mail")
+
+    def connect_db(self):
+        self.db = QSqlDatabase("QSQLITE")
+        self.db.setDatabaseName(str(DATA_FILE))
+        self.db.open()
 
     def setup_model(self):
         self.model = QSqlQueryModel()
@@ -43,7 +45,7 @@ class DetailsMail(QWidget):
             SELECT id, mail, tag_id FROM mail
             WHERE id={self.id_mail}
         """
-        self.model.setQuery(query, db=db)
+        self.model.setQuery(query, db=self.db)
 
     def setup_ui(self):
         self.create_widgets()

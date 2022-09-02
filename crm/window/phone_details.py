@@ -8,10 +8,6 @@ from PySide6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLa
 from crm.api.utils import DATA_FILE, check_phone_number_format
 from crm.database.client import update_number_phone, get_tag_to_category_phone, add_phone
 
-db = QSqlDatabase("QSQLITE")
-db.setDatabaseName(str(DATA_FILE))
-db.open()
-
 
 class MessageConfirm(QMessageBox):
     def __init__(self):
@@ -47,6 +43,11 @@ class DetailsPhone(QWidget):
         else:
             self.setWindowTitle("Ajouter un numéro de téléphone")
 
+    def connect_db(self):
+        self.db = QSqlDatabase("QSQLITE")
+        self.db.setDatabaseName(str(DATA_FILE))
+        self.db.open()
+
     def setup_model(self):
         self.model = QSqlQueryModel()
         self.mapper = QDataWidgetMapper()
@@ -56,7 +57,7 @@ class DetailsPhone(QWidget):
             SELECT id, number, tag_id FROM phone
             WHERE id={self.id_phone}
         """
-        self.model.setQuery(query, db=db)
+        self.model.setQuery(query, db=self.db)
 
     def setup_ui(self):
         self.create_widgets()

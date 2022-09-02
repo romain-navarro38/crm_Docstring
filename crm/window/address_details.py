@@ -8,10 +8,6 @@ from PySide6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLa
 from crm.api.utils import DATA_FILE
 from crm.database.client import update_address, add_address, get_tag_to_category_address
 
-db = QSqlDatabase("QSQLITE")
-db.setDatabaseName(str(DATA_FILE))
-db.open()
-
 
 # noinspection PyAttributeOutsideInit
 class DetailsAddress(QWidget):
@@ -26,6 +22,7 @@ class DetailsAddress(QWidget):
         self.id_address = id_address
         self.id_contact = id_contact
         self.mode_action = mode_action
+        self.connect_db()
         self.setup_model()
         self.setup_ui()
         self.setMinimumWidth(350)
@@ -33,6 +30,11 @@ class DetailsAddress(QWidget):
             self.setWindowTitle("Modifier une adresse")
         else:
             self.setWindowTitle("Ajouter une adresse")
+
+    def connect_db(self):
+        self.db = QSqlDatabase("QSQLITE")
+        self.db.setDatabaseName(str(DATA_FILE))
+        self.db.open()
 
     def setup_model(self):
         self.model = QSqlQueryModel()
@@ -43,7 +45,7 @@ class DetailsAddress(QWidget):
             SELECT id, address, tag_id FROM address
             WHERE id={self.id_address}
         """
-        self.model.setQuery(query, db=db)
+        self.model.setQuery(query, db=self.db)
 
     def setup_ui(self):
         self.create_widgets()

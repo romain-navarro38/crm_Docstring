@@ -35,6 +35,7 @@ class DetailsPhone(QWidget):
         self.id_phone = id_phone
         self.id_contact = id_contact
         self.mode_action = mode_action
+        self.connect_db()
         self.setup_model()
         self.setup_ui()
         self.setMinimumWidth(350)

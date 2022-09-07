@@ -9,7 +9,7 @@ class About(QWidget):
         super().__init__()
 
         self.setup_ui()
-        self.setWindowTitle("A propos crmDostring")
+        self.setWindowTitle("A propos crmDocstring")
 
     def setup_ui(self):
         self.create_widgets()

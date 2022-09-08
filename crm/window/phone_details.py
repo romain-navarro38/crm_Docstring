@@ -1,8 +1,9 @@
-import sys
+"""Module contenant la classe DetailsPhone permettant de générer la fenêtre
+d'ajout ou modification d'un numéro de téléphone."""
 
 from PySide6.QtCore import Signal
 from PySide6.QtSql import QSqlDatabase, QSqlQueryModel
-from PySide6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QPushButton, \
+from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QPushButton, \
     QVBoxLayout, QHBoxLayout, QComboBox, QSpacerItem, QSizePolicy, QMessageBox
 
 from crm.api.utils import DATA_FILE, check_phone_number_format
@@ -103,6 +104,7 @@ class DetailsPhone(QWidget):
         self.btn_cancel.clicked.connect(self.close)
 
     def save_changes(self):
+        """Sauvegarde en bdd du numéro de téléphone et du tag associé après vérifications"""
         if not self.validate_phone():
             return False
 
@@ -111,10 +113,13 @@ class DetailsPhone(QWidget):
             update_number_phone(self.le_number.text(), id_tag, self.id_phone)
         else:
             add_phone(number=self.le_number.text(), contact_id=self.id_contact, tag_id=id_tag)
+        # Emission à la fenêtre parente qu'une modification a eu lieu
         self.update_main_window.emit()
         self.close()
 
-    def validate_phone(self):
+    def validate_phone(self) -> bool:
+        """Vérification de la validité du numéro de téléphone renseigné.
+        Un format invalide pourra toutefois être accepté après confirmation."""
         if not self.le_number.text():
             return False
 
@@ -129,7 +134,10 @@ class DetailsPhone(QWidget):
 
 
 if __name__ == '__main__':
+    import sys
+    from PySide6.QtWidgets import QApplication
+
     app = QApplication(sys.argv)
-    window = DetailsPhone(1)
+    window = DetailsPhone(0, "adding")
     window.show()
     app.exec()

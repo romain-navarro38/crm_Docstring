@@ -1,6 +1,4 @@
 import shutil
-import sys
-import sqlite3
 from datetime import datetime
 from functools import partial
 from pathlib import Path
@@ -13,7 +11,8 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QTableView, QG
     QSpacerItem, QSizePolicy, QFileDialog
 from PIL import Image
 
-from crm.api.utils import DATA_FILE, RESOURCE_DIR, get_dark_style_sheet, update_theme_setting, get_light_style_sheet
+from crm.api.utils import DATA_FILE, RESOURCE_DIR, get_dark_style_sheet, update_theme_setting, get_light_style_sheet, \
+    get_age_from_birthday
 from crm.window.contact_details import DetailsContact
 from crm.window.phone_details import DetailsPhone
 from crm.window.mail_details import DetailsMail
@@ -21,8 +20,7 @@ from crm.window.address_details import DetailsAddress
 from crm.window.tag import Tag
 from crm.window.about import About
 from crm.database.client import QUERY_PHONE, QUERY_MAIL, QUERY_ADDRESS, del_contact_by_id, del_address_by_id, \
-    del_mail_by_id, del_phone_by_id, update_profil_picture
-
+    del_mail_by_id, del_phone_by_id, update_profil_picture, get_contact_informations, get_contact_group
 
 column_titles = {
     "phone": "Téléphone",
@@ -31,37 +29,14 @@ column_titles = {
 }
 
 
-def get_age_from_birthday(birthday: datetime) -> int:
-    today = datetime.now()
-    return today.year - birthday.year - ((today.month, today.day) < (birthday.month, birthday.day))
-
-
-def get_contact_informations(id_contact: int) -> tuple:
-    conn = sqlite3.connect(DATA_FILE)
-    c = conn.cursor()
-    d = {"id_contact": id_contact}
-    c.execute("SELECT profile_picture, birthday, company, job FROM contact WHERE id=:id_contact", d)
-    data = c.fetchone()
-    conn.close()
-    return data
-
-
-def get_contact_group(id_contact: int) -> str:
-    conn = sqlite3.connect(DATA_FILE)
-    c = conn.cursor()
-    d = {"id_contact": id_contact}
-    c.execute("SELECT tag FROM tag INNER JOIN group_ ON tag.id = group_.tag_id WHERE group_.contact_id=:id_contact", d)
-    data = c.fetchall()
-    conn.close()
-    return ", ".join([d[0] for d in data])
-
-
-def create_background_picture(color):
+def create_background_picture(color: tuple[int]):
+    """Enregistre dans le dossier resources une image png de la couleur passé en paramètre."""
     bg = Image.new('RGB', (128, 128), color)
     bg.save(RESOURCE_DIR / "bg.png", 'PNG')
 
 
 class ProfilePicture(QLabel):
+    """Génére une image ronde dans un QLabel"""
     doubleClicked = Signal()
 
     def __init__(self, path_image, *args, **kwargs):
@@ -95,7 +70,8 @@ class ProfilePicture(QLabel):
         self.doubleClicked.emit()
 
 
-class TableViewCustom(QTableView):
+class CustomTableView(QTableView):
+    """Personnalisation des QTableView"""
     def __init__(self,
                  name: str,
                  model: QSqlQueryModel,
@@ -130,6 +106,7 @@ class TableViewCustom(QTableView):
 
 
 class MessageDelete(QMessageBox):
+    """Message de demande de confirmation avant la suppression d'une donnée."""
     def __init__(self, type_data: str, *args: str):
         super().__init__()
         self.setWindowTitle("Confirmation")
@@ -155,6 +132,7 @@ class MessageDelete(QMessageBox):
 
 # noinspection PyAttributeOutsideInit
 class Crm(QMainWindow):
+    """Fenêtre principale de l'application"""
     def __init__(self, parent: QApplication):
         super().__init__()
 
@@ -257,8 +235,10 @@ class Crm(QMainWindow):
         self.setMenuBar(self.menu)
 
     def distribution_editing_action(self, table_view: str = None):
+        """Appel une des méthodes pour éditer une donnée en fonction
+        du TableView actif ou passé en paramètre."""
         if table_view:
-            widget = self.findChild(TableViewCustom, table_view)
+            widget = self.findChild(CustomTableView, table_view)
             if widget.currentIndex().sibling(widget.currentIndex().row(), 0).data() is None:
                 return
             target = table_view
@@ -279,8 +259,10 @@ class Crm(QMainWindow):
                 self.open_details_address(mode_action="modify", selected=widget.currentIndex())
 
     def distribution_deleting_action(self, table_view: str = None):
+        """Appel une des méthodes pour supprimer une donnée en fonction
+        du TableView actif ou passé en paramètre."""
         if table_view:
-            widget = self.findChild(TableViewCustom, table_view)
+            widget = self.findChild(CustomTableView, table_view)
             if widget.currentIndex().sibling(widget.currentIndex().row(), 0).data() is None:
                 return
             target = table_view
@@ -300,9 +282,11 @@ class Crm(QMainWindow):
             case "address":
                 self.deleting_address(selected=widget.currentIndex())
 
-    def check_widget_with_focus(self) -> TableViewCustom | None:
+    def check_widget_with_focus(self) -> CustomTableView | None:
+        """Vérifie si le widget possédant le focus est un CustomTableView.
+        Si oui, le retourne."""
         widget = self.centralWidget().focusWidget()
-        if not isinstance(widget, TableViewCustom):
+        if not isinstance(widget, CustomTableView):
             return
 
         if widget.currentIndex().row() == -1:
@@ -319,19 +303,19 @@ class Crm(QMainWindow):
 
     def create_widgets(self):
         self.le_search = QLineEdit()
-        self.tv_contact = TableViewCustom("contact", self.model_contact, header_stretch="all")
+        self.tv_contact = CustomTableView("contact", self.model_contact, header_stretch="all")
         self.btn_modify_contact = QPushButton()
         self.btn_add_contact = QPushButton()
         self.btn_del_contact = QPushButton()
-        self.tv_phone = TableViewCustom("phone", self.model_phone, header_stretch="last")
+        self.tv_phone = CustomTableView("phone", self.model_phone, header_stretch="last")
         self.btn_modify_phone = QPushButton()
         self.btn_add_phone = QPushButton()
         self.btn_del_phone = QPushButton()
-        self.tv_mail = TableViewCustom("mail", self.model_mail, header_stretch="last")
+        self.tv_mail = CustomTableView("mail", self.model_mail, header_stretch="last")
         self.btn_modify_mail = QPushButton()
         self.btn_add_mail = QPushButton()
         self.btn_del_mail = QPushButton()
-        self.tv_address = TableViewCustom("address", self.model_address, header_stretch="last")
+        self.tv_address = CustomTableView("address", self.model_address, header_stretch="last")
         self.btn_modify_address = QPushButton()
         self.btn_add_address = QPushButton()
         self.btn_del_address = QPushButton()
@@ -459,9 +443,12 @@ class Crm(QMainWindow):
         self.btn_modify_address.clicked.connect(partial(self.distribution_editing_action, "address"))
         self.btn_add_address.clicked.connect(partial(self.open_details_address, "adding"))
         self.btn_del_address.clicked.connect(partial(self.distribution_deleting_action, "address"))
-        self.la_profile_picture.doubleClicked.connect(self.get_filename)
+        self.la_profile_picture.doubleClicked.connect(self.get_filename_image)
 
-    def get_filename(self):
+    def get_filename_image(self):
+        """Ouvre une boite de dialogue afin de récupérer le chemin d'une image.
+        La sauvegarde (resources et bdd) et l'applique à interface.
+        Beaucoup trop d'action : À décomposer"""
         row = self.tv_contact.currentIndex().row()
         if row == -1:
             return
@@ -481,6 +468,7 @@ class Crm(QMainWindow):
         self.update_other_display(self.tv_contact.currentIndex())
 
     def open_details_contact(self, mode_action: str, selected: QModelIndex = None):
+        """Ouvre la fenêtre pour l'ajout ou la modification d'un contact."""
         if mode_action == "modify":
             row = selected.row()
             selected_row_index = self.tv_contact.currentIndex()
@@ -498,6 +486,7 @@ class Crm(QMainWindow):
         self.details_contact.show()
 
     def open_details_phone(self, mode_action: str, selected: QModelIndex = None):
+        """Ouvre la fenêtre pour l'ajout ou la modification d'un numéro de téléphone."""
         if self.tv_contact.currentIndex().row() == -1:
             return
 
@@ -517,6 +506,7 @@ class Crm(QMainWindow):
         self.details_phone.show()
 
     def open_details_mail(self, mode_action: str, selected: QModelIndex = None):
+        """Ouvre la fenêtre pour l'ajout ou la modification d'un mail."""
         if self.tv_contact.currentIndex().row() == -1:
             return
 
@@ -536,6 +526,7 @@ class Crm(QMainWindow):
         self.details_mail.show()
 
     def open_details_address(self, mode_action: str, selected: QModelIndex = None):
+        """Ouvre la fenêtre pour l'ajout ou la modification d'une adresse."""
         if self.tv_contact.currentIndex().row() == -1:
             return
 
@@ -554,39 +545,45 @@ class Crm(QMainWindow):
         self.details_address.setWindowModality(Qt.ApplicationModal)
         self.details_address.show()
 
-    @staticmethod
-    def manage_tag():
-        win = Tag()
-        win.setWindowModality(Qt.ApplicationModal)
-        win.show()
+    def manage_tag(self):
+        """Ouvre la fenêtre de gestion des tags."""
+        self.win = Tag()
+        self.win.setWindowModality(Qt.ApplicationModal)
+        self.win.show()
 
-    @staticmethod
-    def open_about():
-        win = About()
-        win.setWindowModality(Qt.ApplicationModal)
-        win.show()
+    def open_about(self):
+        """Ouvre la fenêtre 'A propos' de l'application"""
+        self.win = About()
+        self.win.setWindowModality(Qt.ApplicationModal)
+        self.win.show()
 
     def refresh_tv_contact(self, selected_row: QModelIndex = None):
+        """Rafraichi les données de tv_contact après ajout ou modification d'une donnée"""
         self.model_contact.setQuery(self.query_contact, db=self.db)
         if selected_row:
             self.tv_contact.setCurrentIndex(selected_row)
 
     def refresh_tv_phone(self, selected_row: QModelIndex = None):
+        """Rafraichi les données de tv_phone après ajout ou modification d'une donnée"""
         self.model_phone.setQuery(self.query_phone, db=self.db)
         if selected_row:
             self.tv_phone.setCurrentIndex(selected_row)
 
     def refresh_tv_mail(self, selected_row: QModelIndex = None):
+        """Rafraichi les données de tv_mail après ajout ou modification d'une donnée"""
         self.model_mail.setQuery(self.query_mail, db=self.db)
         if selected_row:
             self.tv_mail.setCurrentIndex(selected_row)
 
     def refresh_tv_address(self, selected_row: QModelIndex = None):
+        """Rafraichi les données de tv_address après ajout ou modification d'une donnée"""
         self.model_address.setQuery(self.query_address, db=self.db)
         if selected_row:
             self.tv_address.setCurrentIndex(selected_row)
 
     def update_tv_contact(self):
+        """Actualisation des données affichées dans tv_contact suite à une
+        saisie dans la barre de recherche le_search."""
         if search := self.le_search.text():
             self.query_contact = f'''SELECT DISTINCT contact.id, firstname, lastname FROM contact 
                              LEFT OUTER JOIN mail ON contact.id = mail.contact_id 
@@ -608,6 +605,7 @@ class Crm(QMainWindow):
         self.update_other_display(self.tv_contact.currentIndex())
 
     def clean_other_display(self):
+        """Nettoyage de toutes les données affichées hormis tv_contact."""
         self.model_phone.setQuery("")
         self.model_mail.setQuery("")
         self.model_address.setQuery("")
@@ -619,6 +617,8 @@ class Crm(QMainWindow):
         self.la_profile_picture.set_image(RESOURCE_DIR / "pp_00000.png")
 
     def update_other_display(self, selected: QModelIndex):
+        """Actualisation des données affichées hormis tv_contact.
+        Beaucoup trop long : À décomposer."""
         row = selected.row()
         selected_row_index = self.tv_contact.currentIndex()
         self.id_contact = selected_row_index.sibling(row, 0).data()
@@ -666,6 +666,7 @@ class Crm(QMainWindow):
         self.tv_address.hide_first_column()
 
     def change_theme(self, theme: str):
+        """Permet la bascule entre les thèmes clair et sombre"""
         if self.theme == theme:
             return
 
@@ -681,10 +682,12 @@ class Crm(QMainWindow):
         self.update_other_display(selected_row_index)
 
     def generate_background_picture(self):
+        """Génération d'une image de la couleur de fond de l'application."""
         self.background_color = self.palette().color(QPalette.Window).toTuple()
         create_background_picture(self.background_color)
 
     def deleting_contact(self, selected: QModelIndex):
+        """Suppression après confirmation d'un contact."""
         firstname = selected.sibling(selected.row(), 1).data()
         lastname = selected.sibling(selected.row(), 2).data()
 
@@ -702,6 +705,7 @@ class Crm(QMainWindow):
         self.refresh_tv_phone(selected)
 
     def deleting_phone(self, selected: QModelIndex):
+        """Suppression après confirmation d'un numéro de téléphone."""
         number = selected.sibling(selected.row(), 2).data()
 
         msg = MessageDelete("phone", number)
@@ -715,6 +719,7 @@ class Crm(QMainWindow):
         self.refresh_tv_phone(selected)
 
     def deleting_mail(self, selected: QModelIndex):
+        """Suppression après confirmation d'un mail."""
         mail = selected.sibling(selected.row(), 2).data()
 
         msg = MessageDelete("mail", mail)
@@ -728,6 +733,7 @@ class Crm(QMainWindow):
         self.refresh_tv_mail(selected)
 
     def deleting_address(self, selected: QModelIndex):
+        """Suppression après confirmation d'une adresse."""
         address = selected.sibling(selected.row(), 2).data()
 
         msg = MessageDelete("address", address)
@@ -742,6 +748,8 @@ class Crm(QMainWindow):
 
 
 if __name__ == '__main__':
+    import sys
+
     app = QApplication(sys.argv)
     app.setStyleSheet(get_dark_style_sheet())
     window = Crm(app)

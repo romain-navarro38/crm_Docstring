@@ -1,10 +1,9 @@
-import sys
 from functools import partial
 
 from unidecode import unidecode
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QPixmap, QFont
-from PySide6.QtWidgets import QApplication, QWidget, QLabel, QListWidget, QPushButton, QGridLayout, QHBoxLayout, \
+from PySide6.QtWidgets import QWidget, QLabel, QListWidget, QPushButton, QGridLayout, QHBoxLayout, \
     QSpacerItem, QSizePolicy, QMessageBox, QLineEdit, QVBoxLayout
 
 from crm.api.utils import RESOURCE_DIR
@@ -13,13 +12,15 @@ from crm.database.client import get_tag_to_category_group, get_tag_to_category_p
 from crm.window.list_item import CustomListWidgetItem
 
 
-def check_tag(tag: str, list_widget: QListWidget):
+def check_tag(tag: str, list_widget: QListWidget) -> bool:
+    """Vérifie si un tag existe déjà dans un QListWidget"""
     tags = [unidecode(list_widget.item(i).text()).lower() for i in range(list_widget.count())]
     return bool(tag and unidecode(tag).lower() not in tags)
 
 
 # noinspection PyAttributeOutsideInit
 class InputTag(QWidget):
+    """Fenêtre permettant l'ajout ou la modification d'un tag après vérifications"""
     def __init__(self,
                  parent: QWidget,
                  mode_action: str,
@@ -70,10 +71,11 @@ class InputTag(QWidget):
         self.main_layout.addLayout(self.btn_layout)
 
     def setup_connections(self):
-        self.btn_validate.clicked.connect(self.check_input_user)
+        self.btn_validate.clicked.connect(self.save_input_user)
         self.btn_cancel.clicked.connect(self.close)
 
-    def check_input_user(self):
+    def save_input_user(self):
+        """Enregistrement en bdd d'un tag après sa vérification."""
         list_widget: QListWidget = self.parent.findChild(QListWidget, self.category)
         if not check_tag(self.le_tag.text(), list_widget):
             msg = QMessageBox(self)
@@ -242,16 +244,19 @@ class Tag(QWidget):
         self.btn_close.clicked.connect(self.close)
 
     def modify_tag(self, category: str, item: CustomListWidgetItem):
+        """Ouvre la fenêtre de saisi utilisateur pour modifier un tag."""
         self.new_tag = InputTag(self, "modify", category, item)
         self.new_tag.setWindowModality(Qt.ApplicationModal)
         self.new_tag.show()
 
     def add_tag(self, category: str):
+        """Ouvre la fenêtre de saisi utilisateur pour ajouter un tag."""
         self.new_tag = InputTag(self, "adding", category)
         self.new_tag.setWindowModality(Qt.ApplicationModal)
         self.new_tag.show()
 
     def del_tag(self, category: str):
+        """Supression d'un tag seulement s'il n'est pas associé à un contact."""
         widget: QListWidget = self.findChild(QListWidget, category)
         if widget.currentIndex().data() is None:
             return
@@ -269,6 +274,9 @@ class Tag(QWidget):
 
 
 if __name__ == '__main__':
+    import sys
+    from PySide6.QtWidgets import QApplication
+
     app = QApplication(sys.argv)
     window = Tag()
     window.show()

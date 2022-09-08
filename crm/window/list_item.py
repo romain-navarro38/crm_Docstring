@@ -5,6 +5,8 @@ from crm.api.utils import RESOURCE_DIR
 
 
 class CustomListWidgetItem(QListWidgetItem):
+    """Associe à un item de ListWidget un identifiant (id en bdd)
+    et en optionnellement un état/icone (checked ou unchecked)"""
     def __init__(self, item: str, idx: int):
         super().__init__(item)
         self.is_checked = None

@@ -1,15 +1,22 @@
-import sys
+"""Module contenant la classe DetailsContact permettant de générer la fenêtre
+d'ajout ou modification d'un contact."""
+
 from datetime import datetime
 
 from PySide6.QtCore import Signal
 from PySide6.QtSql import QSqlDatabase, QSqlQueryModel
-from PySide6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QDateEdit, \
+from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QDateEdit, \
     QPushButton, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QListWidget, QMessageBox
 
 from crm.api.utils import DATA_FILE
 from crm.window.list_item import CustomListWidgetItem
 from crm.database.client import get_tag_to_category_group, get_tag_to_category_group_by_contact, \
     add_tag_group_at_contact, del_group_of_contact, update_contact, add_contact
+
+
+def change_etat_group(item: CustomListWidgetItem):
+    """Change l'état d'un item de checked à unchecked et inversement."""
+    item.change_etat()
 
 
 # noinspection PyAttributeOutsideInit
@@ -110,9 +117,10 @@ class DetailsContact(QWidget):
     def setup_connections(self):
         self.btn_validate.clicked.connect(self.save_changes)
         self.btn_cancel.clicked.connect(self.close)
-        self.lw_group.itemClicked.connect(self.change_etat_group)
+        self.lw_group.itemClicked.connect(change_etat_group)
 
     def save_changes(self):
+        """Sauvegarde en bdd du contact après vérification"""
         if not self.check_data():
             return
 
@@ -136,10 +144,12 @@ class DetailsContact(QWidget):
                 add_tag_group_at_contact(self.id_contact, item.id)
             elif not item.is_checked and item.id in self.contact_ids:
                 del_group_of_contact(self.id_contact, item.id)
+        # Emission à la fenêtre parente qu'une modification a eu lieu
         self.update_main_window.emit()
         self.close()
 
-    def check_data(self):
+    def check_data(self) -> bool:
+        """Vérification qu'au moins un nom ou un prénom soit renseigné."""
         if not self.le_firstname.text() and not self.le_lastname.text():
             msg = QMessageBox(self)
             msg.setWindowTitle("Incomplet")
@@ -149,12 +159,11 @@ class DetailsContact(QWidget):
             return False
         return True
 
-    @staticmethod
-    def change_etat_group(item):
-        item.change_etat()
-
 
 if __name__ == '__main__':
+    import sys
+    from PySide6.QtWidgets import QApplication
+
     app = QApplication(sys.argv)
     window = DetailsContact("modify", 10)
     window.show()

@@ -1,8 +1,9 @@
-import sys
+"""Module contenant la classe DetailsAddress permettant de générer la fenêtre
+d'ajout ou modification d'une adresse."""
 
 from PySide6.QtCore import Signal
 from PySide6.QtSql import QSqlDatabase, QSqlQueryModel
-from PySide6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QPushButton, \
+from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QPushButton, \
     QVBoxLayout, QHBoxLayout, QComboBox, QSpacerItem, QSizePolicy
 
 from crm.api.utils import DATA_FILE
@@ -91,16 +92,21 @@ class DetailsAddress(QWidget):
         self.btn_cancel.clicked.connect(self.close)
 
     def save_changes(self):
+        """Sauvegarde en bdd de l'adresse et du tag"""
         id_tag = self.idx[self.tags.index(self.cbx_tag.currentText())]
         if self.mode_action == "modify":
             update_address(self.le_address.text(), id_tag, self.id_address)
         else:
             add_address(address=self.le_address.text(), contact_id=self.id_contact, tag_id=id_tag)
+        # Emission à la fenêtre parente qu'une modification a eu lieu
         self.update_main_window.emit()
         self.close()
 
 
 if __name__ == '__main__':
+    import sys
+    from PySide6.QtWidgets import QApplication
+
     app = QApplication(sys.argv)
     window = DetailsAddress(0, "adding", 1)
     window.show()

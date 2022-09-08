@@ -1,8 +1,9 @@
-import sys
+"""Module contenant la classe DetailsMail permettant de générer la fenêtre
+d'ajout ou modification d'un mail."""
 
 from PySide6.QtCore import Signal
 from PySide6.QtSql import QSqlDatabase, QSqlQueryModel
-from PySide6.QtWidgets import QApplication, QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QPushButton, \
+from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QPushButton, \
     QVBoxLayout, QHBoxLayout, QComboBox, QSpacerItem, QSizePolicy, QMessageBox
 
 from crm.api.utils import DATA_FILE, check_mail_format
@@ -90,6 +91,7 @@ class DetailsMail(QWidget):
         self.btn_cancel.clicked.connect(self.close)
 
     def save_changes(self):
+        """Sauvegarde en bdd du mail et du tag associé après vérifications"""
         if not self.validate_mail():
             return
 
@@ -98,10 +100,12 @@ class DetailsMail(QWidget):
             update_mail(self.le_mail.text(), id_tag, self.id_mail)
         else:
             add_mail(mail=self.le_mail.text(), contact_id=self.id_contact, tag_id=id_tag)
+        # Emission à la fenêtre parente qu'une modification a eu lieu
         self.update_main_window.emit()
         self.close()
 
     def validate_mail(self):
+        """Vérification de la validité du mail renseigné"""
         if not self.le_mail.text():
             return False
 
@@ -116,6 +120,9 @@ class DetailsMail(QWidget):
 
 
 if __name__ == '__main__':
+    import sys
+    from PySide6.QtWidgets import QApplication
+
     app = QApplication(sys.argv)
     window = DetailsMail(0, "adding", 1)
     window.show()

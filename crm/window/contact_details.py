@@ -2,16 +2,19 @@
 d'ajout ou modification d'un contact."""
 
 from datetime import datetime
+from functools import partial
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Qt
+from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtSql import QSqlDatabase, QSqlQueryModel
-from PySide6.QtWidgets import QWidget, QFormLayout, QLineEdit, QLabel, QDataWidgetMapper, QDateEdit, \
+from PySide6.QtWidgets import QWidget, QGridLayout, QLineEdit, QLabel, QDataWidgetMapper, QDateEdit, \
     QPushButton, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QListWidget, QMessageBox
 
-from crm.api.utils import DATA_FILE
+from crm.api.utils import DATA_FILE, RESOURCE_DIR
 from crm.window.list_item import CustomListWidgetItem
 from crm.database.client import get_tag_to_category_group, get_tag_to_category_group_by_contact, \
-    add_tag_group_at_contact, del_group_of_contact, update_contact, add_contact
+    add_tag_group_at_contact, del_group_of_contact, update_contact, add_contact, add_tag
+from crm.window.input_tag import InputTag
 
 
 def change_etat_group(item: CustomListWidgetItem):
@@ -33,6 +36,7 @@ class DetailsContact(QWidget):
         self.connect_db()
         self.setup_model()
         self.setup_ui()
+        self.setObjectName("tag")
         if mode_action == "modify":
             self.setWindowTitle("Editer un contact")
         else:
@@ -69,6 +73,7 @@ class DetailsContact(QWidget):
         self.le_company = QLineEdit()
         self.le_job = QLineEdit()
         self.lw_group = QListWidget()
+        self.btn_new_tag = QPushButton("")
         self.btn_validate = QPushButton("Valider")
         self.btn_cancel = QPushButton("Annuler")
 
@@ -82,6 +87,9 @@ class DetailsContact(QWidget):
         self.mapper.addMapping(self.le_company, 4)
         self.mapper.addMapping(self.le_job, 5)
         self.mapper.toFirst()
+        self.lw_group.setObjectName("group")
+        self.btn_new_tag.setIcon(QIcon(QPixmap(RESOURCE_DIR / "tag--plus.png")))
+        self.btn_new_tag.setStyleSheet("QPushButton {min-width: 0px;}")
 
         self.all_items = get_tag_to_category_group()
         contact_items, self.contact_ids = get_tag_to_category_group_by_contact(self.id_contact)
@@ -95,16 +103,31 @@ class DetailsContact(QWidget):
 
     def create_layouts(self):
         self.main_layout = QVBoxLayout(self)
-        self.contact_layout = QFormLayout()
+        self.contact_layout = QGridLayout()
+        self.group_layout = QVBoxLayout()
+        self.btn_new_tag_layout = QHBoxLayout()
         self.btn_layout = QHBoxLayout()
 
     def add_widgets_to_layouts(self):
-        self.contact_layout.addRow(QLabel("Prénom"), self.le_firstname)
-        self.contact_layout.addRow(QLabel("Nom"), self.le_lastname)
-        self.contact_layout.addRow(QLabel("Date de naissance"), self.date_birthday)
-        self.contact_layout.addRow(QLabel("Société"), self.le_company)
-        self.contact_layout.addRow(QLabel("Métier"), self.le_job)
-        self.contact_layout.addRow(QLabel("Groupe"), self.lw_group)
+        self.contact_layout.addWidget(QLabel("Prénom"), 0, 0, 1, 1)
+        self.contact_layout.addWidget(self.le_firstname, 0, 1, 1, 1)
+        self.contact_layout.addWidget(QLabel("Nom"), 1, 0, 1, 1)
+        self.contact_layout.addWidget(self.le_lastname, 1, 1, 1, 1)
+        self.contact_layout.addWidget(QLabel("Date de naissance"), 2, 0, 1, 1)
+        self.contact_layout.addWidget(self.date_birthday, 2, 1, 1, 1)
+        self.contact_layout.addWidget(QLabel("Société"), 3, 0, 1, 1)
+        self.contact_layout.addWidget(self.le_company, 3, 1, 1, 1)
+        self.contact_layout.addWidget(QLabel("Métier"), 4, 0, 1, 1)
+        self.contact_layout.addWidget(self.le_job, 4, 1, 1, 1)
+        self.contact_layout.addLayout(self.group_layout, 5, 0, 1, 1)
+        self.contact_layout.addWidget(self.lw_group, 5, 1, 1, 1)
+
+        self.group_layout.addWidget(QLabel("Groupe"))
+        self.group_layout.addLayout(self.btn_new_tag_layout)
+        self.group_layout.addItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
+
+        self.btn_new_tag_layout.addWidget(self.btn_new_tag)
+        self.btn_new_tag_layout.addItem(QSpacerItem(10, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
         self.btn_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
         self.btn_layout.addWidget(self.btn_validate)
@@ -115,9 +138,25 @@ class DetailsContact(QWidget):
         self.main_layout.addLayout(self.btn_layout)
 
     def setup_connections(self):
+        self.btn_new_tag.clicked.connect(self.open_new_tag)
         self.btn_validate.clicked.connect(self.save_changes)
         self.btn_cancel.clicked.connect(self.close)
         self.lw_group.itemClicked.connect(change_etat_group)
+
+    def open_new_tag(self):
+        """Ouvre la fenêtre de saisi utilisateur pour ajouter un tag."""
+        category = self.lw_group.objectName()
+        self.new_tag = InputTag(self, "adding", category)
+        self.new_tag.setWindowModality(Qt.ApplicationModal)
+        self.new_tag.save_tag.connect(partial(self.add_tag, category))
+        self.new_tag.show()
+
+    def add_tag(self, category: str, new_tag: str):
+        id_ = add_tag(tag=new_tag, category=category)
+        self.all_items.append((new_tag, id_))
+        lw_item = CustomListWidgetItem(item=new_tag, idx=id_)
+        lw_item.checked
+        self.lw_group.addItem(lw_item)
 
     def save_changes(self):
         """Sauvegarde en bdd du contact après vérification"""

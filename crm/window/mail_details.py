@@ -1,5 +1,6 @@
 """Module contenant la classe DetailsMail permettant de générer la fenêtre
 d'ajout ou modification d'un mail."""
+
 from functools import partial
 
 from PySide6.QtCore import Signal, Qt
@@ -60,9 +61,7 @@ class DetailsMail(QWidget):
         self.setup_connections()
 
     def create_widgets(self):
-        self.la_mail = QLabel("Mail")
         self.le_mail = QLineEdit()
-        self.la_tag = QLabel("Tag")
         self.cbx_tag = QComboBox()
         self.btn_new_tag = QPushButton("")
         self.btn_validate = QPushButton("Valider")
@@ -82,22 +81,22 @@ class DetailsMail(QWidget):
 
     def create_layouts(self):
         self.main_layout = QVBoxLayout(self)
-        self.values_layout = QGridLayout()
+        self.mail_layout = QGridLayout()
         self.btn_layout = QHBoxLayout()
 
     def add_widgets_to_layouts(self):
-        self.values_layout.addWidget(QLabel("Mail"), 0, 0, 1, 1)
-        self.values_layout.addWidget(self.le_mail, 0, 1, 1, 2)
-        self.values_layout.addWidget(QLabel("Tag"), 1, 0, 1, 1)
-        self.values_layout.addWidget(self.cbx_tag, 1, 1, 1, 1)
-        self.values_layout.addWidget(self.btn_new_tag, 1, 2, 1, 1)
+        self.mail_layout.addWidget(QLabel("Mail"), 0, 0, 1, 1)
+        self.mail_layout.addWidget(self.le_mail, 0, 1, 1, 2)
+        self.mail_layout.addWidget(QLabel("Tag"), 1, 0, 1, 1)
+        self.mail_layout.addWidget(self.cbx_tag, 1, 1, 1, 1)
+        self.mail_layout.addWidget(self.btn_new_tag, 1, 2, 1, 1)
 
         self.btn_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
         self.btn_layout.addWidget(self.btn_validate)
         self.btn_layout.addWidget(self.btn_cancel)
         self.btn_layout.addItem(QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
-        self.main_layout.addLayout(self.values_layout)
+        self.main_layout.addLayout(self.mail_layout)
         self.main_layout.addLayout(self.btn_layout)
 
     def setup_connections(self):
@@ -118,6 +117,7 @@ class DetailsMail(QWidget):
         self.tags.append(new_tag)
         self.idx.append(id_)
         self.cbx_tag.addItem(new_tag)
+        self.cbx_tag.setCurrentText(new_tag)
 
     def save_changes(self):
         """Sauvegarde en bdd du mail et du tag associé après vérifications"""
